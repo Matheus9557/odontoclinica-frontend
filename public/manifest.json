@@ -1,0 +1,19 @@
+{
+  "name": "Odonto Clínica",
+  "short_name": "OdontoApp",
+  "description": "Aplicação da Odonto Clínica — gestão de pacientes, avaliações e escalas de dor.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafafa",
+  "theme_color": "#1e3a8a",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/tooth-add-svgrepo-com.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
