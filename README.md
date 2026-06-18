@@ -1,69 +1,128 @@
-# React + TypeScript + Vite
+# OralSync — Frontend Web Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+OralSync is a frontend web application built with React and TypeScript, designed to consume a RESTful backend API and provide a real-time user experience for clinical monitoring and data visualization.
 
-Currently, two official plugins are available:
+The project is part of a full-stack system focused on scalable architecture, clean UI design, and real-time communication.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## 🚀 Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React
+- TypeScript
+- React Hooks
+- Axios (API communication)
+- Socket.IO Client (real-time communication)
+- HTML5 / CSS3
+- Vercel (deployment)
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+## 🎯 Main Features
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- Authentication and session handling (via backend API)
+- Consumption of RESTful APIs
+- Real-time updates using Socket.IO
+- Dynamic data rendering
+- Responsive UI design
+- Form handling and validation
+- State management using React Hooks
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 📡 Real-Time Communication
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+This application integrates with a backend system using Socket.IO to provide real-time updates and bidirectional communication between client and server.
+
+Use cases:
+
+- Live data updates
+- Instant notifications
+- Synchronized user interactions
+- Real-time dashboard updates
+
+---
+
+## 🧱 Architecture Overview
+
+The frontend follows a component-based architecture:
+
+- **Pages** → Application views (routes/screens)
+- **Components** → Reusable UI components
+- **Services** → API communication layer
+- **Hooks** → State and logic reuse
+- **Utils** → Helper functions
+
+This structure ensures scalability, reusability, and maintainability.
+
+---
+
+## 📦 Project Structure
+src/
+├── components/ # Reusable UI components
+├── pages/ # Application pages (routes)
+├── services/ # API integration (Axios)
+├── hooks/ # Custom React hooks
+├── contexts/ # Global state
+├── utils/ # Helper functions
+├── styles/ # Global and component styles
+└── App.tsx # Root component
+
+
+---
+
+## 🌐 API Integration
+
+This frontend consumes a backend REST API built with Node.js and Express.
+
+Main integrations:
+- Authentication endpoints
+- Patient data management
+- Evaluation and monitoring data
+- Notification system
+- Real-time updates via WebSockets
+
+---
+
+## ⚙️ Key Engineering Concepts
+
+- Component-based architecture
+- Separation of concerns
+- API-driven UI design
+- Real-time data synchronization
+- Responsive design principles
+- State management with React Hooks
+
+---
+
+## 🚀 Deployment
+
+The application is deployed using Vercel.
+
+Live URL:  
+https://odontoclinica-frontend.vercel.app
+
+---
+
+## 🎯 Project Goals
+
+- Build a production-like frontend application
+- Consume and integrate with a backend API
+- Implement real-time communication features
+- Practice scalable frontend architecture with React + TypeScript
+- Simulate a real SaaS product interface
+
+---
+
+## 🔗 Related Backend
+
+Backend API repository:  
+https://github.com/Matheus9557/odontoclinica-api
+
+---
+
+## 👨‍💻 Author
+
+Matheus Gomes  
+Software Engineer | Full Stack Developer  
+React | Node.js | TypeScript | Java | AWS
