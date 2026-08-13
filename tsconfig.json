@@ -2,21 +2,41 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "allowJs": true,
-    "checkJs": false,
-    "jsx": "react-jsx",              // importante para JSX
+
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
+
+    "jsx": "react-jsx",
+
     "strict": true,
-    "moduleResolution": "node",
+
+    "moduleResolution": "bundler",
+
     "resolveJsonModule": true,
     "esModuleInterop": true,
+
     "forceConsistentCasingInFileNames": true,
+
     "skipLibCheck": true,
-    "baseUrl": "./",
+
+    "noEmit": true,
+
     "paths": {
-      "@/*": ["src/*"]              // permite usar @/components/ui
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+
+  "include": [
+    "src"
+  ],
+
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
