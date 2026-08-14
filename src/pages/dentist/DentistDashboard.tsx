@@ -482,7 +482,7 @@ export default function DentistDashboard() {
                     return (
                       <Card
                         key={entry.id}
-                        className="p-4 bg-white shadow space-y-3"
+                        className="p-4 bg-white shadow space-y-4"
                       >
 
                         <p className="font-semibold text-lg text-gray-800 text-center">
@@ -500,18 +500,24 @@ export default function DentistDashboard() {
                           </p>
                         )}
 
+                        {/* ==================================================
+                            IMAGEM CLÍNICA PROTEGIDA
+                        ================================================== */}
+
                         {imageSrc && (
-                          <div className="flex justify-center">
-                            <img
-                              src={imageSrc}
-                              alt="Imagem clínica enviada pelo paciente"
-                              className="mt-2 w-40 h-40 object-cover rounded-lg cursor-pointer border shadow-sm"
+                          <div className="flex justify-center pt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300"
                               onClick={() =>
                                 setSelectedImage(
                                   imageSrc
                                 )
                               }
-                            />
+                            >
+                              🔒 Visualizar imagem clínica
+                            </Button>
                           </div>
                         )}
 
@@ -533,7 +539,7 @@ export default function DentistDashboard() {
       </div>
 
       {/* ==============================================================
-          MODAL DE IMAGEM
+          MODAL DE IMAGEM CLÍNICA
       ============================================================== */}
 
       <Dialog
@@ -546,25 +552,28 @@ export default function DentistDashboard() {
 
           <DialogHeader>
             <DialogTitle className="text-xl">
-              Imagem enviada pelo paciente
+              Imagem clínica
             </DialogTitle>
 
             <DialogDescription className="text-base text-gray-700">
-              Registro fotográfico enviado
-              para avaliação clínica.
+              Imagem enviada pelo paciente
+              para acompanhamento clínico.
             </DialogDescription>
           </DialogHeader>
 
           {selectedImage && (
-            <img
-              src={selectedImage}
-              alt="Imagem clínica"
-              className="w-full h-auto rounded"
-            />
+            <div className="flex justify-center">
+              <img
+                src={selectedImage}
+                alt="Imagem clínica enviada pelo paciente"
+                className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
+              />
+            </div>
           )}
 
         </DialogContent>
       </Dialog>
+
     </main>
   );
 }
