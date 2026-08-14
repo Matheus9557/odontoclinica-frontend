@@ -474,10 +474,7 @@ export default function DentistDashboard() {
                 <div className="space-y-4">
 
                   {dailyChart.map((entry) => {
-                    const imageSrc =
-                      entry.imageUrl
-                        ? `${import.meta.env.VITE_API_URL}${entry.imageUrl}`
-                        : null;
+                    const imageSrc = entry.imageUrl ?? null;
 
                     return (
                       <Card
