@@ -1,23 +1,77 @@
 "use client";
 
-import { useState, useRef } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
+
+import type { Evaluation } from "@/types/patient";
 
 export default function DailyForm() {
   const { user } = useAuth();
 
-  const [painScale, setPainScale] = useState<number>(1);
-  const [comments, setComments] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [painScale, setPainScale] =
+    useState<number>(1);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [comments, setComments] =
+    useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
+  const [imageFile, setImageFile] =
+    useState<File | null>(null);
+
+  const [evaluation, setEvaluation] =
+    useState<Evaluation | null>(null);
+
+  const [loadingEvaluation, setLoadingEvaluation] =
+    useState(true);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const fileInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    async function loadActiveEvaluation() {
+      try {
+        setLoadingEvaluation(true);
+
+        const response =
+          await api.get<Evaluation | null>(
+            "/evaluations/active"
+          );
+
+        setEvaluation(response.data);
+
+      } catch (error: unknown) {
+        console.error(
+          "Erro ao buscar acompanhamento ativo:",
+          error
+        );
+
+        setEvaluation(null);
+
+      } finally {
+        setLoadingEvaluation(false);
+      }
+    }
+
+    loadActiveEvaluation();
+  }, [user]);
+
+  async function handleSubmit(
+    e: React.FormEvent
+  ) {
     e.preventDefault();
 
     if (!user) {
@@ -25,8 +79,22 @@ export default function DailyForm() {
       return;
     }
 
-    if (painScale < 1 || painScale > 10) {
-      alert("A escala de dor deve estar entre 1 e 10.");
+    if (!evaluation) {
+      alert(
+        "Você não possui um acompanhamento ativo."
+      );
+
+      return;
+    }
+
+    if (
+      painScale < 1 ||
+      painScale > 10
+    ) {
+      alert(
+        "A escala de dor deve estar entre 1 e 10."
+      );
+
       return;
     }
 
@@ -38,16 +106,38 @@ export default function DailyForm() {
     try {
       setLoading(true);
 
-      const formData = new FormData();
-      formData.append("scale", String(painScale));
-      formData.append("comments", comments);
-      formData.append("image", imageFile);
+      const formData =
+        new FormData();
 
-      await api.post("/pain-scale", formData);
+      formData.append(
+        "scale",
+        String(painScale)
+      );
 
-      alert("✅ Relato diário enviado com sucesso!");
+      formData.append(
+        "comments",
+        comments
+      );
 
-      // reset form
+      formData.append(
+        "image",
+        imageFile
+      );
+
+      formData.append(
+        "evaluationId",
+        evaluation.id
+      );
+
+      await api.post(
+        "/pain-scale",
+        formData
+      );
+
+      alert(
+        "✅ Relato diário enviado com sucesso!"
+      );
+
       setPainScale(1);
       setComments("");
       setImageFile(null);
@@ -56,30 +146,100 @@ export default function DailyForm() {
         fileInputRef.current.value = "";
       }
 
-    } catch (err) {
-      console.error("❌ Erro no envio do relato diário:", err);
-      alert("❌ Erro ao enviar o relato diário.");
+    } catch (error: unknown) {
+      console.error(
+        "❌ Erro no envio do relato diário:",
+        error
+      );
+
+      let message =
+        "Erro ao enviar o relato diário.";
+
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error
+      ) {
+        const response = (
+          error as {
+            response?: {
+              data?: {
+                message?: string;
+              };
+            };
+          }
+        ).response;
+
+        message =
+          response?.data?.message ||
+          message;
+      }
+
+      alert(`❌ ${message}`);
+
     } finally {
       setLoading(false);
     }
   }
 
+  if (loadingEvaluation) {
+    return (
+      <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-[#5067AA] p-4">
+        <p className="text-white text-lg">
+          Carregando acompanhamento...
+        </p>
+      </main>
+    );
+  }
+
+  if (!evaluation) {
+    return (
+      <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-[#5067AA] p-4">
+        <Card className="w-full max-w-lg p-8 shadow-lg bg-white rounded-xl text-center space-y-4">
+
+          <h1 className="text-2xl font-semibold text-gray-800">
+            Nenhum acompanhamento ativo
+          </h1>
+
+          <p className="text-gray-600 text-base">
+            No momento, você não possui um
+            acompanhamento clínico ativo.
+          </p>
+
+          <p className="text-gray-500 text-sm">
+            Aguarde a ativação do acompanhamento
+            pelo seu dentista.
+          </p>
+
+        </Card>
+      </main>
+    );
+  }
+
   return (
-    // 🔵 BACKGROUND PADRÃO DA APLICAÇÃO
     <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-[#5067AA] p-4">
+
       <Card className="w-full max-w-lg p-8 shadow-lg bg-white rounded-xl">
 
-        <h1 className="text-2xl font-semibold mb-8 text-center text-gray-800">
-          Relato Diário do Paciente
+        <h1 className="text-2xl font-semibold mb-2 text-center text-gray-800">
+          Relato Diário
         </h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 text-base">
+        <p className="text-center text-gray-500 mb-8">
+          Registre como você está se sentindo hoje.
+        </p>
 
-          {/* Escala de dor */}
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-6 text-base"
+        >
+
           <div>
             <label className="block mb-2 font-medium text-gray-700">
-              Qual o nível da sua dor hoje? (1 a 10)
+              Qual o nível da sua dor hoje?
+              (1 a 10)
             </label>
+
             <Input
               className="text-base"
               type="number"
@@ -87,48 +247,61 @@ export default function DailyForm() {
               max={10}
               required
               value={painScale}
-              onChange={(e) => setPainScale(Number(e.target.value))}
+              onChange={(e) =>
+                setPainScale(
+                  Number(e.target.value)
+                )
+              }
             />
           </div>
 
-          {/* Comentários */}
           <div>
             <label className="block mb-2 font-medium text-gray-700">
-              Como você está se sentindo hoje? (opcional)
+              Como você está se sentindo hoje?
+              (opcional)
             </label>
+
             <textarea
               className="w-full border rounded-md p-3 text-base focus:outline-none focus:ring-2 focus:ring-[#86A6DE]"
               rows={4}
               value={comments}
-              onChange={(e) => setComments(e.target.value)}
+              onChange={(e) =>
+                setComments(e.target.value)
+              }
             />
           </div>
 
-          {/* Upload */}
           <div>
             <label className="block mb-2 font-medium text-gray-700">
-              Enviar foto da região (obrigatório)
+              Enviar foto da região
             </label>
+
             <Input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               required
               className="text-base"
-              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+              onChange={(e) =>
+                setImageFile(
+                  e.target.files?.[0] || null
+                )
+              }
             />
           </div>
 
-          {/* BOTÃO PRINCIPAL */}
           <Button
             disabled={loading}
             type="submit"
             className="w-full bg-[#86A6DE] hover:bg-[#6f8fd0] text-white text-lg py-2"
           >
-            {loading ? "Enviando..." : "Enviar Relato"}
+            {loading
+              ? "Enviando..."
+              : "Enviar relato"}
           </Button>
 
         </form>
+
       </Card>
     </main>
   );
