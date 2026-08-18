@@ -539,6 +539,7 @@ export default function DentistDashboard() {
 
                         <YAxis
                           domain={[1, 10]}
+                          ticks={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
                           allowDecimals={false}
                           tickLine={false}
                           axisLine={false}
