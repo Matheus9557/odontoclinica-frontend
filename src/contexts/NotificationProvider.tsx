@@ -1,5 +1,11 @@
-import { ReactNode, useEffect, useState } from "react";
+import {
+  ReactNode,
+  useEffect,
+  useState,
+} from "react";
+
 import { NotificationContext } from "./NotificationContext";
+
 import { socket } from "@/services/socket";
 import { useAuth } from "@/hooks/useAuth";
 import { api } from "@/services/api";
@@ -8,63 +14,127 @@ interface Props {
   children: ReactNode;
 }
 
-export function NotificationProvider({ children }: Props) {
+export function NotificationProvider({
+  children,
+}: Props) {
   const { user } = useAuth();
-  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  const [unreadCount, setUnreadCount] =
+    useState<number>(0);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
 
-    const authUser = user; // 🔒 trava como não-null
 
-    async function init() {
+    let active = true;
+
+    async function initializeNotifications() {
       try {
-        // 🔁 busca persistido no banco
-        const res = await api.get<{ unread: number }>(
-          "/notifications/unread-count"
-        );
+        /*
+         * Recupera a quantidade persistida
+         * no banco.
+         */
+        const response =
+          await api.get<{
+            unread: number;
+          }>(
+            "/notifications/unread-count"
+          );
 
-        setUnreadCount(res.data.unread);
-
-        // 🔌 conecta socket
-        if (!socket.connected) {
-          socket.connect();
+        if (!active) {
+          return;
         }
 
-        // 🔔 registra usuário na sala dele
-        socket.emit("register_user", authUser.id);
+        setUnreadCount(
+          response.data.unread
+        );
 
-        // 🔔 recebe notificação em tempo real
-        socket.on("notification:new_message", () => {
-          console.log("🔔 Notificação recebida em tempo real!");
-          setUnreadCount((prev) => prev + 1);
-        });
-      } catch (err) {
-        console.error("Erro ao iniciar notificações:", err);
+        /*
+         * O AuthProvider já é responsável
+         * pela autenticação/conexão do socket.
+         *
+         * Aqui apenas registramos o listener.
+         */
+        if (!socket.connected) {
+          console.warn(
+            "Socket ainda não está conectado ao iniciar notificações."
+          );
+        }
+
+        /*
+         * O backend emite:
+         *
+         * notification:new
+         */
+        socket.on(
+          "notification:new",
+          handleNewNotification
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao iniciar notificações:",
+          error
+        );
       }
     }
 
-    init();
+    function handleNewNotification() {
+      if (!active) {
+        return;
+      }
+
+      console.log(
+        "🔔 Nova notificação recebida em tempo real."
+      );
+
+      setUnreadCount(
+        (current) => current + 1
+      );
+    }
+
+    initializeNotifications();
 
     return () => {
-      socket.off("notification:new_message");
+      active = false;
+
+      socket.off(
+        "notification:new",
+        handleNewNotification
+      );
     };
   }, [user]);
 
   function increment() {
-    setUnreadCount((prev) => prev + 1);
+    setUnreadCount(
+      (current) => current + 1
+    );
   }
 
   async function reset() {
-    setUnreadCount(0);
+    try {
+      setUnreadCount(0);
 
-    // marca todas como lidas no backend
-    await api.patch("/notifications/read-all");
+      await api.patch(
+        "/notifications/read-all"
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao marcar notificações como lidas:",
+        error
+      );
+    }
   }
 
   return (
     <NotificationContext.Provider
-      value={{ unreadCount, reset, increment }}
+      value={{
+        unreadCount,
+        reset,
+        increment,
+      }}
     >
       {children}
     </NotificationContext.Provider>

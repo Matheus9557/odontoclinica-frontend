@@ -1,15 +1,29 @@
-import { useEffect, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
 import { useSearchParams } from "react-router-dom";
 
 import { api } from "@/services/api";
+import {
+  connectSocket,
+  socket,
+} from "@/services/socket";
 import { useAuth } from "@/hooks/useAuth";
-import { socket } from "@/services/socket";
+import { useNotification } from "@/contexts/useNotification";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { useNotification } from "@/contexts/useNotification";
+import {
+  Bubble,
+  BubbleContent,
+  BubbleGroup,
+} from "@/components/ui/bubble";
 
 interface Message {
   id: string;
@@ -20,8 +34,42 @@ interface Message {
   patientId: string;
 }
 
+interface PatientResponse {
+  dentistId: string;
+}
+
+function normalizeMessage(
+  message: Message
+): Message {
+  return {
+    ...message,
+    senderType:
+      String(message.senderType).toLowerCase() as
+        | "dentist"
+        | "patient",
+  };
+}
+
+function formatMessageTime(
+  date: string
+): string {
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return parsedDate.toLocaleTimeString(
+    "pt-BR",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
+}
+
 export default function Messages() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { reset } = useNotification();
 
   const [searchParams] =
@@ -33,220 +81,506 @@ export default function Messages() {
   const [content, setContent] =
     useState("");
 
+  const [isSending, setIsSending] =
+    useState(false);
+
+  const [
+    conversationId,
+    setConversationId,
+  ] = useState<string | null>(null);
+
+  const messagesEndRef =
+    useRef<HTMLDivElement | null>(null);
+
   const patientIdFromUrl =
     searchParams.get("patientId");
 
+  /*
+   * Mantém o scroll sempre na última mensagem.
+   */
+  const scrollToBottom =
+    useCallback(() => {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({
+          behavior: "smooth",
+        });
+      });
+    }, []);
+
+  /*
+   * Adiciona uma mensagem somente se ela
+   * ainda não existir no estado.
+   *
+   * Isso evita duplicação caso a mensagem
+   * seja recebida pelo Socket depois do POST.
+   */
+  const addMessage = useCallback(
+    (message: Message) => {
+      const normalizedMessage =
+        normalizeMessage(message);
+
+      setMessages((current) => {
+        const alreadyExists =
+          current.some(
+            (item) =>
+              item.id ===
+              normalizedMessage.id
+          );
+
+        if (alreadyExists) {
+          return current;
+        }
+
+        return [
+          ...current,
+          normalizedMessage,
+        ];
+      });
+    },
+    []
+  );
+
+  /*
+   * Inicialização da conversa.
+   */
   useEffect(() => {
-    if (!user) return;
+  if (!user || !token) {
+    return;
+  }
 
-    const authUser = user;
+  const authUser = user;
+  const authToken = token;
 
-    async function init() {
+  let active = true;
+  let currentConversationId:
+    | string
+    | null = null;
+
+  async function initializeChat() {
+    try {
       await reset();
 
       let dentistId: string;
       let patientId: string;
 
-      if (authUser.role === "dentist") {
-
-        if (!patientIdFromUrl) return;
-
-        dentistId = authUser.id;
-        patientId = patientIdFromUrl;
-
-      } else {
-
-        const res =
-          await api.get<{
-            dentistId: string;
-          }>("/patients/me");
+      if (
+        authUser.role === "dentist"
+      ) {
+        if (!patientIdFromUrl) {
+          return;
+        }
 
         dentistId =
-          res.data.dentistId;
+          authUser.id;
+
+        patientId =
+          patientIdFromUrl;
+      } else {
+        const response =
+          await api.get<PatientResponse>(
+            "/patients/me"
+          );
+
+        dentistId =
+          response.data.dentistId;
 
         patientId =
           authUser.id;
       }
 
-      if (!socket.connected) {
-        socket.connect();
+      currentConversationId =
+        `conversation:${dentistId}:${patientId}`;
+
+      if (!active) {
+        return;
       }
 
-      socket.emit("join", {
-        room:
-          `conversation:${dentistId}:${patientId}`,
-      });
+      setConversationId(
+        currentConversationId
+      );
 
-      const res =
+      if (!socket.connected) {
+        connectSocket(
+          authToken,
+          authUser
+        );
+      }
+
+      socket.emit(
+        "conversation:join",
+        currentConversationId
+      );
+
+      const response =
         await api.get<Message[]>(
           "/messages",
           {
-            params: { patientId },
+            params: {
+              patientId,
+            },
           }
         );
 
-      setMessages(res.data);
+      if (!active) {
+        return;
+      }
+
+      setMessages(
+        response.data.map(
+          normalizeMessage
+        )
+      );
+
+      scrollToBottom();
+    } catch (error) {
+      console.error(
+        "Erro ao inicializar conversa:",
+        error
+      );
     }
+  }
 
-    init();
 
-    socket.on(
-      "new_message",
-      (msg: Message) => {
+    initializeChat();
+
+    /*
+     * O backend emite:
+     *
+     * message:new
+     *
+     * para todos os usuários presentes
+     * na sala da conversa.
+     */
+    function handleNewMessage(
+      message: Message
+    ) {
+      if (!active) {
+        return;
+      }
+
+      /*
+       * Só processa mensagens da conversa
+       * atualmente aberta.
+       */
+      if (
+        currentConversationId &&
+        message.dentistId &&
+        message.patientId
+      ) {
+        const messageConversation =
+          `conversation:${message.dentistId}:${message.patientId}`;
 
         if (
-          msg.senderType !==
-          authUser.role
+          messageConversation !==
+          currentConversationId
         ) {
-          setMessages(
-            (prev) => [
-              ...prev,
-              msg,
-            ]
-          );
+          return;
         }
-
       }
+
+      addMessage(message);
+      scrollToBottom();
+    }
+
+    socket.on(
+      "message:new",
+      handleNewMessage
     );
 
     return () => {
-      socket.off("new_message");
-    };
+      active = false;
 
+      /*
+       * Sai da sala da conversa atual.
+       */
+      if (currentConversationId) {
+        socket.emit(
+          "conversation:leave",
+          currentConversationId
+        );
+      }
+
+      socket.off(
+        "message:new",
+        handleNewMessage
+      );
+    };
   }, [
     user,
+    token,
     patientIdFromUrl,
     reset,
+    addMessage,
+    scrollToBottom,
   ]);
 
+  /*
+   * Envia uma mensagem.
+   */
   async function handleSend() {
-    if (!user) return;
+    if (
+      !user ||
+      !content.trim() ||
+      isSending
+    ) {
+      return;
+    }
 
-    const authUser = user;
-
-    if (!content.trim()) return;
+    const messageContent =
+      content.trim();
 
     let receiverId: string;
 
-    if (authUser.role === "dentist") {
+    try {
+      setIsSending(true);
 
-      if (!patientIdFromUrl) return;
+      /*
+       * DENTISTA → PACIENTE
+       */
+      if (
+        user.role === "dentist"
+      ) {
+        if (!patientIdFromUrl) {
+          return;
+        }
 
-      receiverId =
-        patientIdFromUrl;
-
-    } else {
-
-      const res =
-        await api.get<{
-          dentistId: string;
-        }>("/patients/me");
-
-      receiverId =
-        res.data.dentistId;
-    }
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        content,
-        senderType:
-          authUser.role,
-        createdAt:
-          new Date().toISOString(),
-        dentistId:
-          authUser.role === "dentist"
-            ? authUser.id
-            : receiverId,
-        patientId:
-          authUser.role === "patient"
-            ? authUser.id
-            : receiverId,
-      },
-    ]);
-
-    setContent("");
-
-    await api.post(
-      "/messages/send",
-      {
-        content,
-        receiverId,
+        receiverId =
+          patientIdFromUrl;
       }
+
+      /*
+       * PACIENTE → DENTISTA
+       */
+      else {
+        const response =
+          await api.get<PatientResponse>(
+            "/patients/me"
+          );
+
+        receiverId =
+          response.data.dentistId;
+      }
+
+      /*
+       * O backend salva a mensagem e
+       * em seguida emite "message:new".
+       *
+       * Portanto, não adicionamos uma
+       * mensagem artificial aqui.
+       */
+      await api.post(
+        "/messages/send",
+        {
+          content: messageContent,
+          receiverId,
+        }
+      );
+
+      setContent("");
+    } catch (error) {
+      console.error(
+        "Erro ao enviar mensagem:",
+        error
+      );
+
+      alert(
+        "Não foi possível enviar a mensagem."
+      );
+    } finally {
+      setIsSending(false);
+    }
+  }
+
+  /*
+   * Permite enviar com Enter.
+   */
+  function handleKeyDown(
+    event: React.KeyboardEvent<HTMLInputElement>
+  ) {
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+
+      void handleSend();
+    }
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  /*
+   * Dentista precisa ter um paciente
+   * selecionado para abrir a conversa.
+   */
+  if (
+    user.role === "dentist" &&
+    !patientIdFromUrl
+  ) {
+    return (
+      <div className="min-h-[calc(100vh-70px)] bg-background px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <Card className="p-6 bg-card text-card-foreground border-border">
+            <p className="text-muted-foreground">
+              Selecione um paciente para
+              iniciar uma conversa.
+            </p>
+          </Card>
+        </div>
+      </div>
     );
   }
 
-  if (!user) return null;
-
   return (
-
-    <div className="min-h-[calc(100vh-70px)] bg-background py-8 px-4">
-
+    <main className="min-h-[calc(100vh-70px)] bg-background px-4 py-8">
       <div className="max-w-4xl mx-auto space-y-4">
+
+        {/* CABEÇALHO */}
+
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">
+            Mensagens
+          </h1>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Comunicação segura entre paciente
+            e dentista.
+          </p>
+        </div>
 
         {/* CHAT */}
 
-        <Card className="p-4 h-[520px] overflow-y-auto space-y-3 bg-card text-card-foreground border-border shadow-lg">
+        <Card className="bg-card text-card-foreground border-border shadow-lg overflow-hidden">
 
-          {messages.map((msg) => {
+          <div className="h-[520px] overflow-y-auto px-4 py-5 sm:px-6">
 
-            const isMine =
-              msg.senderType ===
-              user.role;
+            {messages.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-muted-foreground">
+                  Nenhuma mensagem ainda.
+                  Envie a primeira mensagem.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
 
-            return (
+                {messages.map(
+                  (message, index) => {
+                    const isMine =
+                      message.senderType ===
+                      user.role;
 
-              <div
-                key={msg.id}
-                className={`flex ${
-                  isMine
-                    ? "justify-end"
-                    : "justify-start"
-                }`}
-              >
+                    const previousMessage =
+                      messages[index - 1];
+
+                    const isSameSender =
+                      previousMessage &&
+                      previousMessage.senderType ===
+                        message.senderType;
+
+                    return (
+                      <BubbleGroup
+                        key={message.id}
+                        className={
+                          isSameSender
+                            ? "gap-1"
+                            : "gap-2"
+                        }
+                      >
+
+                        <Bubble
+                          align={
+                            isMine
+                              ? "end"
+                              : "start"
+                          }
+                          variant={
+                            isMine
+                              ? "default"
+                              : "muted"
+                          }
+                        >
+                          <BubbleContent
+                            className="text-base"
+                          >
+                            {message.content}
+                          </BubbleContent>
+                        </Bubble>
+
+                        <div
+                          className={`text-xs text-muted-foreground ${
+                            isMine
+                              ? "text-right pr-2"
+                              : "text-left pl-2"
+                          }`}
+                        >
+                          {formatMessageTime(
+                            message.createdAt
+                          )}
+                        </div>
+
+                      </BubbleGroup>
+                    );
+                  }
+                )}
 
                 <div
-                  className={`px-4 py-2 rounded-lg max-w-xs text-base ${
-                    isMine
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
-                  }`}
-                >
-                  {msg.content}
-                </div>
+                  ref={messagesEndRef}
+                />
 
               </div>
-            );
-          })}
+            )}
+
+          </div>
+
+          {/* INPUT */}
+
+          <div className="border-t border-border bg-card p-4">
+
+            <div className="flex gap-2">
+
+              <Input
+                className="text-base bg-background"
+                value={content}
+                onChange={(event) =>
+                  setContent(
+                    event.target.value
+                  )
+                }
+                onKeyDown={handleKeyDown}
+                placeholder="Digite sua mensagem..."
+                disabled={isSending}
+              />
+
+              <Button
+                onClick={() =>
+                  void handleSend()
+                }
+                disabled={
+                  isSending ||
+                  !content.trim() ||
+                  !conversationId
+                }
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                {isSending
+                  ? "Enviando..."
+                  : "Enviar"}
+              </Button>
+
+            </div>
+
+            <p className="mt-2 text-xs text-muted-foreground">
+              Pressione Enter para enviar.
+            </p>
+
+          </div>
 
         </Card>
 
-
-        {/* INPUT */}
-
-        <div className="flex gap-2">
-
-          <Input
-            className="text-base bg-card"
-            value={content}
-            onChange={(e) =>
-              setContent(e.target.value)
-            }
-            placeholder="Digite sua mensagem..."
-          />
-
-          <Button
-            onClick={handleSend}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground text-base"
-          >
-            Enviar
-          </Button>
-
-        </div>
-
       </div>
-
-    </div>
+    </main>
   );
 }

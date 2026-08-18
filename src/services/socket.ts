@@ -20,18 +20,26 @@ export function connectSocket(
     token,
   };
 
-  if (!socket.connected) {
-    socket.connect();
+  if (socket.connected) {
+    socket.emit("join", {
+      userId: user.id,
+      role: user.role,
+    });
+
+    return;
   }
 
-  socket.emit("join", {
-    userId: user.id,
-    role: user.role,
+  socket.once("connect", () => {
+    socket.emit("join", {
+      userId: user.id,
+      role: user.role,
+    });
   });
+
+  socket.connect();
 }
 
 export function disconnectSocket() {
   socket.disconnect();
-
   socket.auth = {};
 }
