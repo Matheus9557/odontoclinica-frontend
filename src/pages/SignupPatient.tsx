@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+
 import { api } from "@/services/api";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -35,14 +37,31 @@ export default function SignupPatient() {
       setName("");
       setEmail("");
       setPassword("");
+
     } catch (error: unknown) {
-      console.error("Erro ao cadastrar paciente:", error);
+      console.error(
+        "Erro ao cadastrar paciente:",
+        error
+      );
 
       let msg = "Falha ao cadastrar paciente";
 
-      if (typeof error === "object" && error !== null) {
-        const axiosErr = error as { response?: { data?: { error?: string } } };
-        msg = axiosErr?.response?.data?.error || msg;
+      if (
+        typeof error === "object" &&
+        error !== null
+      ) {
+        const axiosErr =
+          error as {
+            response?: {
+              data?: {
+                error?: string;
+              };
+            };
+          };
+
+        msg =
+          axiosErr?.response?.data?.error ||
+          msg;
       }
 
       alert(msg);
@@ -50,26 +69,35 @@ export default function SignupPatient() {
   }
 
   return (
-    <main className="flex justify-center items-center min-h-[calc(100vh-70px)] px-4 bg-[#5067AA]">
-      <Card className="w-full max-w-lg bg-white shadow-lg border rounded-xl py-8">
+    <main className="flex justify-center items-center min-h-[calc(100vh-70px)] px-4 bg-background">
+
+      <Card className="w-full max-w-lg bg-card text-card-foreground shadow-lg border border-border rounded-xl py-8">
 
         <div className="px-8 mb-4">
-          <h1 className="text-2xl font-semibold text-center text-gray-800">
+
+          <h1 className="text-2xl font-semibold text-center text-foreground">
             Cadastro de Paciente
           </h1>
-          <p className="text-base text-center text-gray-500">
+
+          <p className="text-base text-center text-muted-foreground">
             Preencha os dados abaixo para registrar um novo paciente
           </p>
+
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-8 text-base">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-5 px-8 text-base"
+        >
 
           <Input
             className="text-base"
             type="text"
             placeholder="Nome"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) =>
+              setName(e.target.value)
+            }
             required
           />
 
@@ -78,7 +106,9 @@ export default function SignupPatient() {
             type="email"
             placeholder="E-mail"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
             required
           />
 
@@ -87,17 +117,21 @@ export default function SignupPatient() {
             type="password"
             placeholder="Senha"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) =>
+              setPassword(e.target.value)
+            }
             required
           />
 
           <Button
             type="submit"
-            className="w-full mt-2 bg-[#86A6DE] hover:bg-[#6f8fd0] text-white text-lg py-2"
+            className="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground text-lg py-2"
           >
             Cadastrar Paciente
           </Button>
+
         </form>
+
       </Card>
     </main>
   );

@@ -10,14 +10,19 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 import {
-  LineChart,
+  CartesianGrid,
   Line,
+  LineChart,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
 } from "recharts";
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 import {
   Dialog,
@@ -58,6 +63,13 @@ interface ApiError {
   };
 }
 
+const chartConfig = {
+  scale: {
+    label: "Dor",
+    color: "var(--chart-2)",
+  },
+} satisfies ChartConfig;
+
 function getErrorMessage(
   error: unknown,
   fallback: string
@@ -79,7 +91,13 @@ function getErrorMessage(
 }
 
 function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("pt-BR");
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Data inválida";
+  }
+
+  return parsedDate.toLocaleDateString("pt-BR");
 }
 
 export default function DentistDashboard() {
@@ -104,11 +122,15 @@ export default function DentistDashboard() {
   const [selectedImage, setSelectedImage] =
     useState<string | null>(null);
 
-  const [activatingPatientId, setActivatingPatientId] =
-    useState<string | null>(null);
+  const [
+    activatingPatientId,
+    setActivatingPatientId,
+  ] = useState<string | null>(null);
 
-  const [activeEvaluations, setActiveEvaluations] =
-    useState<Record<string, boolean>>({});
+  const [
+    activeEvaluations,
+    setActiveEvaluations,
+  ] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user || user.role !== "dentist") {
@@ -130,52 +152,58 @@ export default function DentistDashboard() {
         > = {};
 
         await Promise.all(
-          response.data.map(async (patient) => {
-            try {
-              const evaluationResponse =
-                await api.get<Evaluation[]>(
-                  `/evaluations/patient/${patient.id}`
+          response.data.map(
+            async (patient) => {
+              try {
+                const evaluationResponse =
+                  await api.get<Evaluation[]>(
+                    `/evaluations/patient/${patient.id}`
+                  );
+
+                const now = new Date();
+
+                const hasActiveEvaluation =
+                  evaluationResponse.data.some(
+                    (evaluation) => {
+                      const startDate =
+                        new Date(
+                          evaluation.startDate
+                        );
+
+                      const endDate =
+                        new Date(
+                          evaluation.endDate
+                        );
+
+                      return (
+                        now >= startDate &&
+                        now <= endDate
+                      );
+                    }
+                  );
+
+                evaluationStatus[
+                  patient.id
+                ] = hasActiveEvaluation;
+
+              } catch (error: unknown) {
+                console.error(
+                  `Erro ao verificar acompanhamento do paciente ${patient.id}:`,
+                  error
                 );
 
-              const now = new Date();
-
-              const hasActiveEvaluation =
-                evaluationResponse.data.some(
-                  (evaluation) => {
-                    const startDate =
-                      new Date(
-                        evaluation.startDate
-                      );
-
-                    const endDate =
-                      new Date(
-                        evaluation.endDate
-                      );
-
-                    return (
-                      now >= startDate &&
-                      now <= endDate
-                    );
-                  }
-                );
-
-              evaluationStatus[patient.id] =
-                hasActiveEvaluation;
-            } catch (error: unknown) {
-              console.error(
-                `Erro ao verificar acompanhamento do paciente ${patient.id}:`,
-                error
-              );
-
-              evaluationStatus[patient.id] =
-                false;
+                evaluationStatus[
+                  patient.id
+                ] = false;
+              }
             }
-          })
+          )
         );
 
         setActiveEvaluations(
           evaluationStatus
         );
+
       } catch (error: unknown) {
         console.error(
           "Erro ao carregar pacientes:",
@@ -188,6 +216,7 @@ export default function DentistDashboard() {
             "Erro ao carregar pacientes."
           )
         );
+
       } finally {
         setLoadingPatients(false);
       }
@@ -200,20 +229,25 @@ export default function DentistDashboard() {
     patient: Patient
   ) {
     try {
-      setActivatingPatientId(patient.id);
+      setActivatingPatientId(
+        patient.id
+      );
 
       await api.post(
         `/evaluations/${patient.id}`
       );
 
-      setActiveEvaluations((current) => ({
-        ...current,
-        [patient.id]: true,
-      }));
+      setActiveEvaluations(
+        (current) => ({
+          ...current,
+          [patient.id]: true,
+        })
+      );
 
       alert(
         `Acompanhamento de ${patient.name} ativado com sucesso.`
       );
+
     } catch (error: unknown) {
       console.error(
         "Erro ao ativar acompanhamento:",
@@ -226,6 +260,7 @@ export default function DentistDashboard() {
           "Erro ao ativar acompanhamento."
         )
       );
+
     } finally {
       setActivatingPatientId(null);
     }
@@ -244,6 +279,7 @@ export default function DentistDashboard() {
         );
 
       setDailyChart(response.data);
+
     } catch (error: unknown) {
       console.error(
         "Erro ao carregar dados do paciente:",
@@ -258,6 +294,7 @@ export default function DentistDashboard() {
           "Erro ao carregar dados do paciente."
         )
       );
+
     } finally {
       setLoadingChart(false);
     }
@@ -265,43 +302,58 @@ export default function DentistDashboard() {
 
   if (!user || user.role !== "dentist") {
     return (
-      <p className="p-6 text-lg">
+      <p className="p-6 text-lg text-foreground">
         Acesso negado.
       </p>
     );
   }
 
   return (
-    <main className="min-h-[calc(100vh-70px)] bg-[#5067AA] px-6 py-8">
+    <main className="min-h-[calc(100vh-70px)] bg-background px-6 py-8">
+
       <div className="max-w-6xl mx-auto space-y-10">
 
-        <h1 className="text-3xl font-semibold text-white">
-          Dashboard do Dentista
-        </h1>
+        {/* HEADER */}
 
-        {/* ============================================================
-            PACIENTES
-        ============================================================ */}
+        <div>
+          <h1 className="text-3xl font-semibold text-foreground">
+            Dashboard do Dentista
+          </h1>
+
+          <p className="mt-1 text-muted-foreground">
+            Acompanhamento clínico dos seus pacientes.
+          </p>
+        </div>
+
+        {/* PACIENTES */}
 
         <section>
-          <h2 className="text-2xl font-semibold mb-4 text-white">
+
+          <h2 className="text-2xl font-semibold mb-4 text-foreground">
             Pacientes
           </h2>
 
           {loadingPatients ? (
-            <p className="text-white text-base">
+            <p className="text-muted-foreground text-base">
               Carregando pacientes...
             </p>
+
           ) : patients.length === 0 ? (
-            <Card className="p-6 bg-white shadow">
-              <p className="text-gray-600">
+
+            <Card className="p-6 bg-card text-card-foreground shadow-sm border-border">
+
+              <p className="text-muted-foreground">
                 Nenhum paciente cadastrado.
               </p>
+
             </Card>
+
           ) : (
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
               {patients.map((patient) => {
+
                 const hasActiveEvaluation =
                   activeEvaluations[
                     patient.id
@@ -314,41 +366,37 @@ export default function DentistDashboard() {
                 return (
                   <Card
                     key={patient.id}
-                    className="p-5 bg-white shadow space-y-4"
+                    className="p-5 bg-card text-card-foreground border-border shadow-sm space-y-4"
                   >
 
-                    {/* Informações do paciente */}
-
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-800">
+                      <h3 className="text-xl font-semibold text-card-foreground">
                         {patient.name}
                       </h3>
 
-                      <p className="text-base text-gray-600">
+                      <p className="text-base text-muted-foreground">
                         {patient.email}
                       </p>
                     </div>
 
-                    {/* Status do acompanhamento */}
+                    <div className="rounded-md bg-muted border border-border p-3">
 
-                    <div className="rounded-md bg-gray-50 border p-3">
                       {hasActiveEvaluation ? (
-                        <p className="text-sm font-medium text-green-700">
+                        <p className="text-sm font-medium text-green-400">
                           ✓ Acompanhamento clínico ativo
                         </p>
                       ) : (
-                        <p className="text-sm font-medium text-gray-600">
+                        <p className="text-sm font-medium text-muted-foreground">
                           Nenhum acompanhamento ativo
                         </p>
                       )}
-                    </div>
 
-                    {/* Ativar acompanhamento */}
+                    </div>
 
                     {!hasActiveEvaluation && (
                       <Button
                         disabled={isActivating}
-                        className="w-full bg-[#5067AA] hover:bg-[#40558f] text-white text-lg py-2"
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg py-2"
                         onClick={() =>
                           activateEvaluation(
                             patient
@@ -361,10 +409,8 @@ export default function DentistDashboard() {
                       </Button>
                     )}
 
-                    {/* Evolução clínica */}
-
                     <Button
-                      className="w-full bg-[#86A6DE] hover:bg-[#6f8fd0] text-white text-lg py-2"
+                      className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground text-lg py-2"
                       onClick={() =>
                         loadPatientData(
                           patient
@@ -374,11 +420,9 @@ export default function DentistDashboard() {
                       Acompanhar evolução clínica
                     </Button>
 
-                    {/* Mensagens */}
-
                     <Button
                       variant="outline"
-                      className="w-full bg-[#86A6DE] hover:bg-[#6f8fd0] text-white text-lg py-2"
+                      className="w-full bg-secondary hover:bg-secondary/80 text-secondary-foreground border-border text-lg py-2"
                       onClick={() =>
                         navigate(
                           `/messages?patientId=${patient.id}`
@@ -394,95 +438,185 @@ export default function DentistDashboard() {
 
             </div>
           )}
+
         </section>
 
-        {/* ============================================================
-            EVOLUÇÃO CLÍNICA
-        ============================================================ */}
+        {/* EVOLUÇÃO */}
 
         {selectedPatient && (
           <section className="space-y-6">
 
-            <h2 className="text-2xl font-semibold text-white">
-              Gráfico Referente à Escala de Dor —{" "}
-              {selectedPatient.name}
-            </h2>
+            <div>
+
+              <h2 className="text-2xl font-semibold text-foreground">
+                Evolução da Escala de Dor
+              </h2>
+
+              <p className="mt-1 text-muted-foreground">
+                Paciente: {selectedPatient.name}
+              </p>
+
+            </div>
 
             {loadingChart ? (
-              <p className="text-white text-base">
+
+              <p className="text-muted-foreground text-base">
                 Carregando dados...
               </p>
+
             ) : dailyChart.length > 0 ? (
+
               <>
-                {/* ====================================================
-                    GRÁFICO
-                ==================================================== */}
 
-                <Card className="p-4 bg-white shadow h-80">
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                  >
-                    <LineChart
-                      data={dailyChart}
+                {/* GRÁFICO */}
+
+                <Card className="bg-card text-card-foreground border-border shadow-sm overflow-hidden">
+
+                  <div className="border-b border-border px-6 py-5">
+
+                    <h3 className="text-lg font-semibold">
+                      Escala de dor
+                    </h3>
+
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Evolução dos relatos diários do paciente.
+                    </p>
+
+                  </div>
+
+                  <div className="px-2 sm:px-6 pb-6 pt-4">
+
+                    <ChartContainer
+                      config={chartConfig}
+                      className="h-[320px] w-full"
                     >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                      />
 
-                      <XAxis
-                        dataKey="date"
-                        tickFormatter={(value) =>
-                          formatDate(
-                            String(value)
-                          )
-                        }
-                      />
+                      <LineChart
+                        accessibilityLayer
+                        data={dailyChart}
+                        margin={{
+                          left: 12,
+                          right: 12,
+                          top: 10,
+                          bottom: 10,
+                        }}
+                      >
 
-                      <YAxis
-                        domain={[1, 10]}
-                        allowDecimals={false}
-                      />
+                        <CartesianGrid
+                          vertical={false}
+                          className="stroke-border"
+                        />
 
-                      <RechartsTooltip
-                        labelFormatter={(value) =>
-                          `Data: ${formatDate(
-                            String(value)
-                          )}`
-                        }
-                        formatter={(value) => [
-                          `${value}/10`,
-                          "Dor",
-                        ]}
-                      />
+                        <XAxis
+                          dataKey="date"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                          minTickGap={24}
+                          className="fill-muted-foreground"
+                          tickFormatter={(value) => {
+                            const date = new Date(
+                              String(value)
+                            );
 
-                      <Line
-                        type="monotone"
-                        dataKey="scale"
-                        stroke="#dc2626"
-                        strokeWidth={3}
-                        dot={{ r: 4 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                            if (
+                              Number.isNaN(
+                                date.getTime()
+                              )
+                            ) {
+                              return "--/--";
+                            }
+
+                            return date.toLocaleDateString(
+                              "pt-BR",
+                              {
+                                day: "2-digit",
+                                month: "2-digit",
+                              }
+                            );
+                          }}
+                        />
+
+                        <YAxis
+                          domain={[1, 10]}
+                          allowDecimals={false}
+                          tickLine={false}
+                          axisLine={false}
+                          width={30}
+                          className="fill-muted-foreground"
+                        />
+
+                        <ChartTooltip
+                          cursor={{
+                            stroke:
+                              "var(--border)",
+                            strokeWidth: 1,
+                          }}
+                          content={
+                            <ChartTooltipContent
+                              labelFormatter={(
+                                value
+                              ) =>
+                                `Data: ${formatDate(
+                                  String(value)
+                                )}`
+                              }
+                              formatter={(
+                                value
+                              ) => [
+                                `${value}/10`,
+                              ]}
+                            />
+                          }
+                        />
+
+                        <Line
+                          dataKey="scale"
+                          type="monotone"
+                          stroke="var(--color-scale)"
+                          strokeWidth={3}
+                          dot={{
+                            r: 5,
+                            fill:
+                              "var(--color-scale)",
+                            strokeWidth: 2,
+                            stroke:
+                              "var(--card)",
+                          }}
+                          activeDot={{
+                            r: 7,
+                            fill:
+                              "var(--color-scale)",
+                            stroke:
+                              "var(--card)",
+                            strokeWidth: 2,
+                          }}
+                        />
+
+                      </LineChart>
+
+                    </ChartContainer>
+
+                  </div>
+
                 </Card>
 
-                {/* ====================================================
-                    RELATOS
-                ==================================================== */}
+                {/* RELATOS */}
 
                 <div className="space-y-4">
 
                   {dailyChart.map((entry) => {
-                    const imageSrc = entry.imageUrl ?? null;
+
+                    const imageSrc =
+                      entry.imageUrl ?? null;
 
                     return (
                       <Card
                         key={entry.id}
-                        className="p-4 bg-white shadow space-y-4"
+                        className="p-4 bg-card text-card-foreground border-border shadow-sm space-y-4"
                       >
 
-                        <p className="font-semibold text-lg text-gray-800 text-center">
+                        <p className="font-semibold text-lg text-card-foreground text-center">
                           📅{" "}
                           {formatDate(
                             entry.date
@@ -492,21 +626,18 @@ export default function DentistDashboard() {
                         </p>
 
                         {entry.comments && (
-                          <p className="text-base text-gray-700 text-center">
+                          <p className="text-base text-muted-foreground text-center">
                             {entry.comments}
                           </p>
                         )}
 
-                        {/* ==================================================
-                            IMAGEM CLÍNICA PROTEGIDA
-                        ================================================== */}
-
                         {imageSrc && (
                           <div className="flex justify-center pt-2">
+
                             <Button
                               type="button"
                               variant="outline"
-                              className="bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-300"
+                              className="bg-muted hover:bg-accent text-foreground border-border"
                               onClick={() =>
                                 setSelectedImage(
                                   imageSrc
@@ -515,6 +646,7 @@ export default function DentistDashboard() {
                             >
                               🔒 Visualizar imagem clínica
                             </Button>
+
                           </div>
                         )}
 
@@ -523,11 +655,15 @@ export default function DentistDashboard() {
                   })}
 
                 </div>
+
               </>
+
             ) : (
-              <p className="text-white text-base">
+
+              <p className="text-muted-foreground text-base">
                 Nenhum relato enviado ainda.
               </p>
+
             )}
 
           </section>
@@ -535,40 +671,46 @@ export default function DentistDashboard() {
 
       </div>
 
-      {/* ==============================================================
-          MODAL DE IMAGEM CLÍNICA
-      ============================================================== */}
+      {/* MODAL */}
 
       <Dialog
         open={!!selectedImage}
-        onOpenChange={() =>
-          setSelectedImage(null)
-        }
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedImage(null);
+          }
+        }}
       >
-        <DialogContent className="max-w-3xl bg-white border shadow-lg">
+
+        <DialogContent className="max-w-3xl bg-card text-card-foreground border-border shadow-xl">
 
           <DialogHeader>
+
             <DialogTitle className="text-xl">
               Imagem clínica
             </DialogTitle>
 
-            <DialogDescription className="text-base text-gray-700">
+            <DialogDescription className="text-muted-foreground">
               Imagem enviada pelo paciente
               para acompanhamento clínico.
             </DialogDescription>
+
           </DialogHeader>
 
           {selectedImage && (
             <div className="flex justify-center">
+
               <img
                 src={selectedImage}
                 alt="Imagem clínica enviada pelo paciente"
                 className="max-h-[70vh] w-auto max-w-full rounded-lg object-contain"
               />
+
             </div>
           )}
 
         </DialogContent>
+
       </Dialog>
 
     </main>

@@ -8,19 +8,60 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-blue-600 text-white shadow hover:bg-blue-700",
-        success: "bg-green-600 text-white shadow hover:bg-green-700",
-        warning: "bg-yellow-500 text-black shadow hover:bg-yellow-600",
-        destructive:
-          "bg-destructive text-white shadow hover:bg-destructive/90 focus-visible:ring-destructive/50",
-        outline:
-          "border bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
+        /*
+         * 10% — COR DE DESTAQUE
+         * Usado para ações principais.
+         */
+        default:
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
+
+        /*
+         * 30% — SUPERFÍCIES
+         * Botão secundário, sem competir com o destaque.
+         */
         secondary:
-          "bg-secondary text-secondary-foreground shadow hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+
+        /*
+         * 30% — SUPERFÍCIES
+         * Botão discreto para ações menos importantes.
+         */
+        outline:
+          "border border-border bg-card text-card-foreground shadow-sm hover:bg-accent hover:text-accent-foreground",
+
+        /*
+         * 30% — SUPERFÍCIES
+         * Ação de baixa ênfase.
+         */
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-blue-600 underline-offset-4 hover:underline",
+          "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground",
+
+        /*
+         * 10% — DESTAQUE SEMÂNTICO
+         * Mantém o verde para indicar sucesso.
+         */
+        success:
+          "bg-green-600 text-white shadow-sm hover:bg-green-700",
+
+        /*
+         * Estado de atenção.
+         */
+        warning:
+          "bg-yellow-500 text-black shadow-sm hover:bg-yellow-600",
+
+        /*
+         * Estado destrutivo.
+         */
+        destructive:
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 focus-visible:ring-destructive/50",
+
+        /*
+         * Link usa a cor principal do tema.
+         */
+        link:
+          "text-primary underline-offset-4 hover:underline",
       },
+
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
@@ -28,6 +69,7 @@ const buttonVariants = cva(
         icon: "h-9 w-9",
       },
     },
+
     defaultVariants: {
       variant: "default",
       size: "default",

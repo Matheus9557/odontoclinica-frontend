@@ -10,9 +10,11 @@ import { useNavigate } from "react-router-dom";
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"dentist" | "patient">("dentist");
+  const [role, setRole] =
+    useState<"dentist" | "patient">("dentist");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,19 +34,23 @@ export default function Login() {
   }
 
   return (
-    <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-[#5067AA] px-4">
-      <Card className="w-full max-w-lg bg-white shadow-lg border rounded-xl py-8">
+    <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-background px-4">
+      <Card className="w-full max-w-lg bg-card text-card-foreground shadow-lg border border-border rounded-xl py-8">
 
         <div className="px-8 mb-4">
-          <h1 className="text-3xl font-bold text-center text-[#5067AA]">
+          <h1 className="text-3xl font-bold text-center text-primary">
             Login
           </h1>
-          <p className="text-base text-center text-gray-500 mt-1">
+
+          <p className="text-base text-center text-muted-foreground mt-1">
             Acesse sua conta para continuar
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-8">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-5 px-8"
+        >
           <Input
             type="email"
             placeholder="E-mail"
@@ -64,9 +70,13 @@ export default function Login() {
           />
 
           <select
-            className="border rounded-md px-3 py-2 text-base"
+            className="border border-border rounded-md px-3 py-2 text-base bg-input text-foreground"
             value={role}
-            onChange={(e) => setRole(e.target.value as "dentist" | "patient")}
+            onChange={(e) =>
+              setRole(
+                e.target.value as "dentist" | "patient"
+              )
+            }
           >
             <option value="dentist">Dentista</option>
             <option value="patient">Paciente</option>
@@ -74,7 +84,7 @@ export default function Login() {
 
           <Button
             type="submit"
-            className="w-full mt-2 bg-[#86A6DE] hover:bg-[#6f90cc] text-white text-base py-2.5"
+            className="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground text-base py-2.5"
           >
             Entrar
           </Button>

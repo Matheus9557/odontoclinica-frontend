@@ -184,48 +184,52 @@ export default function DailyForm() {
 
   if (loadingEvaluation) {
     return (
-      <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-[#5067AA] p-4">
-        <p className="text-white text-lg">
+      <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-background p-4">
+
+        <p className="text-muted-foreground text-lg">
           Carregando acompanhamento...
         </p>
+
       </main>
     );
   }
 
   if (!evaluation) {
     return (
-      <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-[#5067AA] p-4">
-        <Card className="w-full max-w-lg p-8 shadow-lg bg-white rounded-xl text-center space-y-4">
+      <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-background p-4">
 
-          <h1 className="text-2xl font-semibold text-gray-800">
+        <Card className="w-full max-w-lg p-8 shadow-lg bg-card text-card-foreground border-border rounded-xl text-center space-y-4">
+
+          <h1 className="text-2xl font-semibold text-foreground">
             Nenhum acompanhamento ativo
           </h1>
 
-          <p className="text-gray-600 text-base">
+          <p className="text-muted-foreground text-base">
             No momento, você não possui um
             acompanhamento clínico ativo.
           </p>
 
-          <p className="text-gray-500 text-sm">
+          <p className="text-muted-foreground text-sm">
             Aguarde a ativação do acompanhamento
             pelo seu dentista.
           </p>
 
         </Card>
+
       </main>
     );
   }
 
   return (
-    <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-[#5067AA] p-4">
+    <main className="flex items-center justify-center min-h-[calc(100vh-70px)] bg-background p-4">
 
-      <Card className="w-full max-w-lg p-8 shadow-lg bg-white rounded-xl">
+      <Card className="w-full max-w-lg p-8 shadow-lg bg-card text-card-foreground border-border rounded-xl">
 
-        <h1 className="text-2xl font-semibold mb-2 text-center text-gray-800">
+        <h1 className="text-2xl font-semibold mb-2 text-center text-foreground">
           Relato Diário
         </h1>
 
-        <p className="text-center text-gray-500 mb-8">
+        <p className="text-center text-muted-foreground mb-8">
           Registre como você está se sentindo hoje.
         </p>
 
@@ -235,7 +239,8 @@ export default function DailyForm() {
         >
 
           <div>
-            <label className="block mb-2 font-medium text-gray-700">
+
+            <label className="block mb-2 font-medium text-foreground">
               Qual o nível da sua dor hoje?
               (1 a 10)
             </label>
@@ -253,26 +258,30 @@ export default function DailyForm() {
                 )
               }
             />
+
           </div>
 
           <div>
-            <label className="block mb-2 font-medium text-gray-700">
+
+            <label className="block mb-2 font-medium text-foreground">
               Como você está se sentindo hoje?
               (opcional)
             </label>
 
             <textarea
-              className="w-full border rounded-md p-3 text-base focus:outline-none focus:ring-2 focus:ring-[#86A6DE]"
+              className="w-full border border-border bg-card text-card-foreground rounded-md p-3 text-base focus:outline-none focus:ring-2 focus:ring-ring"
               rows={4}
               value={comments}
               onChange={(e) =>
                 setComments(e.target.value)
               }
             />
+
           </div>
 
           <div>
-            <label className="block mb-2 font-medium text-gray-700">
+
+            <label className="block mb-2 font-medium text-foreground">
               Enviar foto da região
             </label>
 
@@ -284,16 +293,18 @@ export default function DailyForm() {
               className="text-base"
               onChange={(e) =>
                 setImageFile(
-                  e.target.files?.[0] || null
+                  e.target.files?.[0] ||
+                  null
                 )
               }
             />
+
           </div>
 
           <Button
             disabled={loading}
             type="submit"
-            className="w-full bg-[#86A6DE] hover:bg-[#6f8fd0] text-white text-lg py-2"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-lg py-2"
           >
             {loading
               ? "Enviando..."
@@ -303,6 +314,7 @@ export default function DailyForm() {
         </form>
 
       </Card>
+
     </main>
   );
 }
